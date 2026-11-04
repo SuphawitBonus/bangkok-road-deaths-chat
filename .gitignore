@@ -32,3 +32,8 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
+
+# ผลการรัน eval รายครั้ง (มีคำตอบของโมเดลทุกข้อ ไฟล์ใหญ่และเปลี่ยนทุกครั้ง)
+# commit เฉพาะไฟล์สรุป
+evals/results/*
+!evals/results/summary.md

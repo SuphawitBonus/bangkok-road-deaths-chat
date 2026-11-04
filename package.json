@@ -18,11 +18,13 @@
     "docs:schema": "tsx src/scripts/dump-schema-doc.ts",
     "evals:verify": "tsx src/scripts/verify-evals.ts",
     "evals:crosscheck": "python evals/crosscheck.py",
+    "evals:run": "tsx src/scripts/run-evals.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
     "csv-parse": "^7.0.3",
     "libpg-query": "^17.2.0",
     "pg": "^8.16.3"
