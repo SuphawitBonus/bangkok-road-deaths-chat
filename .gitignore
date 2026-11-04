@@ -1,0 +1,34 @@
+# Secrets — ห้าม commit เด็ดขาด (connection string, รหัสผ่าน DB, API key)
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test / coverage
+coverage/
+.vitest/
+
+# Python (โฟลเดอร์ data/)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

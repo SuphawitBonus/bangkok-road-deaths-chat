@@ -1,0 +1,29 @@
+# Postgres สำหรับ dev ในเครื่อง — ตอน deploy จะย้ายไป Neon ซึ่งเป็น Postgres เหมือนกัน
+# สคีมาและ role ทั้งหมดจึงเป็น SQL มาตรฐาน ไม่ผูกกับ Docker
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: roaddeaths-db
+    restart: unless-stopped
+    environment:
+      # ไม่มีค่า default โดยตั้งใจ — ถ้าลืมสร้าง .env ให้ fail ไปเลย
+      # ดีกว่าแอบรันด้วยรหัสผ่านที่เดาได้
+      POSTGRES_USER: ${POSTGRES_USER:?ตั้งค่าใน .env ก่อน (ดู .env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ตั้งค่าใน .env ก่อน (ดู .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:?ตั้งค่าใน .env ก่อน (ดู .env.example)}
+      # เทียบกับ Neon ที่เป็น UTF-8 และใช้ UTC
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:
