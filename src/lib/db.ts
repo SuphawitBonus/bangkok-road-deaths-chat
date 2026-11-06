@@ -7,12 +7,13 @@
 // ตัวตรวจในโค้ด ซึ่งผิดหลักที่ตั้งไว้ว่าชั้นฐานข้อมูลต้องยืนอยู่ได้เองแม้โค้ดพัง
 import pg from 'pg'
 
-import { required } from './env.js'
+import { optional, required } from './env.js'
 
 const { Pool } = pg
 
 let admin: pg.Pool | undefined
 let ai: pg.Pool | undefined
+let web: pg.Pool | undefined
 
 function baseConfig(): pg.PoolConfig {
   // ตอน deploy จะมี DATABASE_URL มาแทน (Neon)
@@ -55,8 +56,30 @@ export function aiPool(): pg.Pool {
   return ai
 }
 
+/**
+ * connection ของ role สำหรับ web API
+ *
+ * อ่านได้เฉพาะตารางสรุป app.h3_deaths_monthly เท่านั้น
+ * ห้ามอ่าน app.deaths หรือ app.deaths_raw เพื่อความเป็นส่วนตัว
+ */
+export function webPool(): pg.Pool {
+  if (process.env.WEB_DATABASE_URL) {
+    web ??= new Pool({ connectionString: process.env.WEB_DATABASE_URL, max: 4 })
+    return web
+  }
+  web ??= new Pool({
+    ...baseConfig(),
+    // ชื่อ role ของเว็บคือ web_reader เสมอ (db/04_web_security.sql) ไม่ตั้งใน .env ก็ได้
+    user: optional('WEB_DB_USER', 'web_reader'),
+    password: required('WEB_DB_PASSWORD'),
+    max: 4,
+  })
+  return web
+}
+
 export async function closePools(): Promise<void> {
-  await Promise.all([admin?.end(), ai?.end()])
+  await Promise.all([admin?.end(), ai?.end(), web?.end()])
   admin = undefined
   ai = undefined
+  web = undefined
 }

@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+:root {
+  --font-sans: var(--font-noto-thai), "Noto Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --line: #e2e8f0;
+  --accent: #b10026;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  /* ห้ามเลื่อนทั้งหน้า: แผนที่เต็มจอ ส่วนแผงข้อมูลเลื่อนเองข้างใน (และกันล้นจอแนวนอนบนมือถือ) */
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: #f1f5f9;
+  /* ตัวเลขกว้างเท่ากัน ตัวเลขในแผงไม่ขยับตอนค่าเปลี่ยน */
+  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
+}
+
+/* tooltip ของ deck.gl สร้างเอง ให้ใช้ฟอนต์เดียวกับหน้า */
+.deck-tooltip {
+  font-family: var(--font-sans) !important;
+}
+
+/* ปุ่มและช่องเลือกที่แตะง่ายบนมือถือ (ขั้นต่ำ 44px ตามแนวทางการเข้าถึง) */
+.tap {
+  min-height: 44px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ปุ่มซูม/เข็มทิศของ MapLibre สูง 29px เล็กเกินไปสำหรับนิ้วมือ ขยายเป็น 44px บนจอสัมผัส */
+@media (pointer: coarse) {
+  .maplibregl-ctrl-group button {
+    width: 44px;
+    height: 44px;
+  }
+}

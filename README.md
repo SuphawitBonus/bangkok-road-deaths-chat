@@ -46,8 +46,21 @@ npm run docs:schema         # สร้าง docs/data-dictionary.md จาก 
 | `src/scripts/` | สคริปต์ migrate, load ข้อมูล, ตรวจเฉลยของ eval |
 | `data/` | ฝั่งข้อมูลที่เป็น Python — สคริปต์ดึงข้อมูลจาก data.go.th และไฟล์ CSV ดิบ |
 | `evals/` | ชุดคำถามทดสอบพร้อมเฉลย (`questions.jsonl`) |
+| `web/` | หน้าเว็บ Next.js: แผนที่ 3 มิติ (MapLibre + deck.gl) ดู [web/README.md](web/README.md) |
 | `tests/` | ชุดทดสอบ (vitest) |
-| `docs/` | [ความปลอดภัย](docs/security.md) · [พจนานุกรมข้อมูล](docs/data-dictionary.md) · [ชุดทดสอบ](docs/evals.md) |
+| `docs/` | [ความปลอดภัย](docs/security.md) · [ความเป็นส่วนตัวของหน้าแผนที่](docs/privacy.md) · [การตัดสินใจฝั่งเว็บ](docs/decisions-web.md) · [พจนานุกรมข้อมูล](docs/data-dictionary.md) · [ชุดทดสอบ](docs/evals.md) |
+
+## หน้าเว็บ: กรุงเทพฯ 3 มิติ
+
+แผนที่แท่งหกเหลี่ยม H3 ไล่สีตามจำนวนผู้เสียชีวิต วางบนตึก 3 มิติของ OpenStreetMap เว็บอ่านฐานข้อมูลด้วย role `web_reader`
+ที่เห็นแค่ตารางสรุป (ไม่มีข้อมูลรายคน) และซ่อนช่องที่มีน้อยกว่า 3 ราย — เหตุผลและข้อจำกัดอยู่ใน [docs/privacy.md](docs/privacy.md)
+
+```bash
+# ใส่ WEB_DB_PASSWORD ใน .env ก่อน (ดู .env.example) แล้ว
+npm run db:setup     # สร้าง role web_reader + ตารางสรุป H3
+npm run db:check     # ตรวจสิทธิ์ของทุก role (web_reader เป็นข้อบังคับ ไม่มีก็ล้ม)
+npm run web:dev      # http://localhost:3010
+```
 
 ## หลักการที่ยึดไว้
 
