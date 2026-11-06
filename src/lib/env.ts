@@ -22,6 +22,11 @@ export function required(name: string): string {
   return value
 }
 
+export function optional(name: string, fallback = ''): string {
+  loadOnce()
+  return process.env[name] ?? fallback
+}
+
 export function optionalNumber(name: string, fallback: number): number {
   loadOnce()
   const raw = process.env[name]

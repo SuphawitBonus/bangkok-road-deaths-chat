@@ -7,13 +7,17 @@
   "engines": {
     "node": ">=20.6"
   },
+  "workspaces": [
+    "web"
+  ],
   "scripts": {
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && docker compose up -d",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "db:load": "tsx src/scripts/load.ts",
-    "db:setup": "npm run db:migrate && npm run db:load",
+    "db:load-h3": "tsx src/scripts/load-h3.ts",
+    "db:setup": "npm run db:migrate && npm run db:load && npm run db:load-h3",
     "db:check": "tsx src/scripts/check-db-security.ts",
     "docs:schema": "tsx src/scripts/dump-schema-doc.ts",
     "evals:verify": "tsx src/scripts/verify-evals.ts",
@@ -21,11 +25,15 @@
     "evals:run": "tsx src/scripts/run-evals.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "web:dev": "npm --prefix web run dev",
+    "web:build": "npm --prefix web run build",
+    "web:measure-suppression": "tsx src/scripts/measure-suppression.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
     "csv-parse": "^7.0.3",
+    "h3-js": "^4.5.0",
     "libpg-query": "^17.2.0",
     "pg": "^8.16.3"
   },
