@@ -10,7 +10,7 @@ import { handleH3 } from '@/lib/h3-api'
 import { queryH3Rows } from '@/lib/h3-queries'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const result = await handleH3(request.nextUrl.searchParams, {
+  const result = await handleH3(request.nextUrl.search, {
     queryRows: queryH3Rows,
     logError: (context, err) => console.error(`[api/h3] ${context}`, err),
   })

@@ -8,12 +8,12 @@
 //   2) ขอช่วงปี [ปีแรก..Y] ทุกปี แล้วลบผลของปีติดกัน กู้ได้กี่รายการช่อง-ปีที่ "ควรถูกซ่อน" (1–2 ราย)
 //      ข้อ 2 คือหลักฐานว่ากฎ k<3 เป็นกฎแสดงผล ไม่ใช่การรับประกันต่อผู้ที่ตั้งใจ (ดู docs/privacy.md)
 import { DATA_YEAR_MAX_COMPLETE, DATA_YEAR_MIN } from '../../web/lib/years.js'
-import type { H3Body } from '../../web/lib/h3-api.js'
+import { canonicalQuery, type H3Body } from '../../web/lib/h3-api.js'
 
 const base = process.argv[2] ?? 'http://localhost:3010'
 
 async function get(res: 8 | 9, from: number, to: number): Promise<H3Body> {
-  const r = await fetch(`${base}/api/h3?res=${res}&year_from=${from}&year_to=${to}`)
+  const r = await fetch(`${base}/api/h3?${canonicalQuery({ resolution: res, yearFrom: from, yearTo: to })}`)
   if (!r.ok) throw new Error(`API ตอบ ${r.status} — เปิดเว็บที่ ${base} แล้วหรือยัง (และมี web_reader)`)
   return (await r.json()) as H3Body
 }

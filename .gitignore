@@ -37,3 +37,7 @@ Thumbs.db
 # commit เฉพาะไฟล์สรุป
 evals/results/*
 !evals/results/summary.md
+
+# Neon agent skills (เครื่องมือของ agent ไม่ใช่ส่วนของโปรเจกต์)
+.claude/skills/
+skills-lock.json

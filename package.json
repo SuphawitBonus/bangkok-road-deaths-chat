@@ -7,9 +7,6 @@
   "engines": {
     "node": ">=20.6"
   },
-  "workspaces": [
-    "web"
-  ],
   "scripts": {
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
@@ -28,7 +25,10 @@
     "typecheck": "tsc --noEmit",
     "web:dev": "npm --prefix web run dev",
     "web:build": "npm --prefix web run build",
-    "web:measure-suppression": "tsx src/scripts/measure-suppression.ts"
+    "web:measure-suppression": "tsx src/scripts/measure-suppression.ts",
+    "neon:sync": "tsx src/scripts/sync-neon.ts",
+    "neon:check": "tsx src/scripts/check-neon.ts",
+    "web:neon": "tsx src/scripts/run-web-with-neon.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",

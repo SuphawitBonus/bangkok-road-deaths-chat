@@ -73,9 +73,14 @@ const UNAVAILABLE: YearsErrorBody = {
   message: 'The map data is temporarily unavailable. Please try again later.',
 }
 
-export async function handleYears(params: URLSearchParams, deps: YearsDeps): Promise<YearsResult> {
-  // ไม่มีพารามิเตอร์ใดเลย ทุกอย่างที่ส่งมาคือการเปลี่ยน URL เพื่อหลบ cache → 400 (ไม่สะท้อนชื่อกลับไป)
-  if ([...params.keys()].length > 0) {
+/**
+ * @param search query string ดิบของคำขอ (`request.nextUrl.search`) ต้องว่างเท่านั้น
+ * ตรวจที่สตริงดิบ ไม่ใช่ที่ URLSearchParams เพราะ "?&" หรือ "?%20" ไม่มีพารามิเตอร์ที่ถอดรหัสได้แต่เป็น URL คนละเส้น
+ * ที่ cache ไม่เคยเห็น — จุดเข้ามีเส้นเดียว (`/api/years`)
+ */
+export async function handleYears(search: string, deps: YearsDeps): Promise<YearsResult> {
+  // ทุกอย่างที่ต่อท้ายมาคือการเปลี่ยน URL เพื่อหลบ cache → 400 (ไม่สะท้อนสิ่งที่ส่งมากลับไป)
+  if (search !== '') {
     return { status: 400, body: { error: 'invalid_parameter', message: 'this endpoint takes no parameters' } }
   }
 

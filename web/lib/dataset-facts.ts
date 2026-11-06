@@ -12,6 +12,12 @@ export const TOTAL_DEATHS = 12146
 /** ผู้เสียชีวิตที่มีพิกัดจุดเกิดเหตุที่ใช้ได้ (has_location) ทุกปี */
 export const LOCATED_DEATHS = 7529
 
+/**
+ * ในจำนวนนั้น เฉพาะปีที่ข้อมูลครบ (ค.ศ. 2011–2024) = ผลรวมที่ /api/h3 ส่งได้ทุกความละเอียดเมื่อเลือกทุกปี
+ * ใช้เป็นหลักฐานอิสระของ npm run neon:check ว่าตารางบน Neon ให้ตัวเลขเดียวกับในเครื่อง
+ */
+export const LOCATED_DEATHS_COMPLETE_YEARS = 7337
+
 export const LOCATED_PERCENT = Math.round((LOCATED_DEATHS / TOTAL_DEATHS) * 100)
 
 /**
@@ -39,3 +45,18 @@ export const TOTAL_DEATHS_BY_YEAR: Readonly<Record<number, number>> = {
 }
 
 export const SOURCE_URL = 'https://data.go.th/dataset/rtddi'
+
+/**
+ * คอลัมน์ของ app.h3_deaths_monthly ที่ตั้งใจให้มี (เรียงตามชื่อ) ถ้ามีคอลัมน์อื่นเพิ่ม (เช่น id, วันที่, อายุ) แปลว่าเริ่มมี
+ * ข้อมูลรายคนหลุดเข้ามาในตารางที่เว็บอ่านได้ ทั้ง db:check (ในเครื่อง) และ neon:check (production) ตรวจรายการเดียวกันนี้
+ */
+export const H3_TABLE_COLUMNS: readonly string[] = [
+  'centroid_lat',
+  'centroid_lng',
+  'death_count',
+  'died_month',
+  'died_year',
+  'h3_res8',
+  'h3_res9',
+  'is_complete_year',
+]

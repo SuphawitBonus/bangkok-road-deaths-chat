@@ -5,7 +5,13 @@
 // หลังย้ายไป Neon เพราะสิทธิ์บนบริการที่จัดการให้อาจต่างจาก Postgres ในเครื่อง
 import pg from 'pg'
 
-import { LOCATED_DEATHS, TOTAL_DEATHS, TOTAL_DEATHS_BY_YEAR } from '../../web/lib/dataset-facts.js'
+import {
+  H3_TABLE_COLUMNS,
+  LOCATED_DEATHS,
+  LOCATED_DEATHS_COMPLETE_YEARS,
+  TOTAL_DEATHS,
+  TOTAL_DEATHS_BY_YEAR,
+} from '../../web/lib/dataset-facts.js'
 import { DATA_YEAR_MAX_COMPLETE, DATA_YEAR_MIN } from '../../web/lib/years.js'
 import { adminPool, aiPool, closePools, webPool } from '../lib/db.js'
 
@@ -81,11 +87,6 @@ const PG_READ_ONLY_TRANSACTION = '25006'
 
 const ALL_PRIVILEGES = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']
 
-/** คอลัมน์ของตารางสรุปที่ตั้งใจให้มี ถ้ามีคอลัมน์อื่นเพิ่ม (เช่น id, วันที่, อายุ) แปลว่าเริ่มมีข้อมูลรายคนหลุดเข้ามา */
-const H3_TABLE_COLUMNS = [
-  'centroid_lat', 'centroid_lng', 'death_count', 'died_month', 'died_year',
-  'h3_res8', 'h3_res9', 'is_complete_year',
-]
 
 const quoteIdent = (name: string) => `"${name.replaceAll('"', '""')}"`
 const errorCode = (err: unknown) => (err as { code?: string } | null)?.code
@@ -343,6 +344,12 @@ async function checkWebReader(): Promise<number> {
       `(${r.rows[0]!.total} กับ ${complete.rows[0]!.n})`,
     )
   }
+
+  check(
+    complete.rows[0]!.n === LOCATED_DEATHS_COMPLETE_YEARS,
+    `ผู้เสียชีวิตที่มีพิกัดในปีที่ครบ = ${LOCATED_DEATHS_COMPLETE_YEARS.toLocaleString('en-US')} (ค่าคงที่ที่ neon:check ใช้เทียบกับ Neon)`,
+    `(ได้ ${complete.rows[0]!.n})`,
+  )
 
   // 8) ยอดรายปีที่ไทม์ไลน์ใช้: ผู้เสียชีวิตทั้งหมด (ค่าคงที่ในเว็บ) และที่มีพิกัด (query แบบ /api/years ด้วย web_reader)
   const perYear = await admin.query<{ year: number; total: number; located: number }>(

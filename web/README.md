@@ -23,11 +23,13 @@ npm run typecheck
 
 เว็บเริ่มทำงานไม่ได้ถ้าไม่มี `WEB_DB_PASSWORD` (หรือ `WEB_DATABASE_URL`) โดยตั้งใจ — ไม่มีการสลับไปใช้ role อื่น
 
-## ข้อควรระวังตอนติดตั้งแพ็กเกจ
+## โปรเจกต์อิสระ
 
-`package.json` ที่รากประกาศ `workspaces: ["web"]` แต่ `web/` มี `package-lock.json` และ `node_modules` ของตัวเอง
-การรัน `npm install <แพ็กเกจ>` ในโฟลเดอร์นี้ตรง ๆ จะทำให้ npm รื้อโครงสร้างทั้งหมด (dry-run ชี้ว่าจะลบ 216 และเพิ่ม 183 แพ็กเกจ)
-ให้ใช้ `npm install <แพ็กเกจ> --prefix "$(pwd)" --workspaces=false` แทน (รายละเอียดใน docs/decisions-web.md)
+`web/` เป็นโปรเจกต์ของตัวเอง: มี `package.json`, `package-lock.json` และ `node_modules` เอง ไม่ import อะไรจากนอก `web/`
+(มี test ตรวจ) และ `package.json` ที่รากไม่มี `workspaces` แล้ว ติดตั้งแพ็กเกจในโฟลเดอร์นี้ได้ตามปกติด้วย `npm install <แพ็กเกจ>`
+บน Vercel ตั้ง Root Directory = `web` ขั้นตอน deploy ทั้งหมดอยู่ใน [docs/deploy.md](../docs/deploy.md)
+
+`npm run typecheck` รัน `next typegen` ก่อน (สร้างชนิด `LayoutProps` ฯลฯ) เพราะในเครื่องที่เพิ่ง clone ยังไม่มีโฟลเดอร์ `.next`
 
 ## เวอร์ชันที่ล็อกไว้โดยตั้งใจ
 

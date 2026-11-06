@@ -1,6 +1,6 @@
 // ฝั่งเบราว์เซอร์: เรียก /api/h3 และแปลงผลเป็นสิ่งที่แผนที่ใช้
 // ส่วนที่เป็นฟังก์ชันล้วน (เลือก resolution สี การแยกช่องที่ถูกซ่อน) ทดสอบใน tests/h3-client.test.ts
-import { K_MIN, type H3Body, type H3Cell, type H3Resolution } from './h3-api'
+import { canonicalQuery, K_MIN, type H3Body, type H3Cell, type H3Resolution } from './h3-api'
 import type { YearsBody, YearTotal } from './years-api'
 
 /**
@@ -91,7 +91,8 @@ export async function fetchH3(
   yearTo: number,
   signal?: AbortSignal,
 ): Promise<H3Body> {
-  const url = `/api/h3?res=${resolution}&year_from=${yearFrom}&year_to=${yearTo}`
+  // ต้องเป็นรูปมาตรฐานเท่านั้น เซิร์ฟเวอร์ปฏิเสธรูปอื่นด้วย 400 (ดู canonicalQuery)
+  const url = `/api/h3?${canonicalQuery({ resolution, yearFrom, yearTo })}`
   const res = await fetch(url, { signal })
   if (!res.ok) throw new ApiError(res.status)
   const body = (await res.json()) as H3Body
