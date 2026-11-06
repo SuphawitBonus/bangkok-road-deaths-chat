@@ -170,6 +170,17 @@ describe('pickAllowedEnv — เว็บอ่านจาก .env ได้เ
     }
   })
 
+  it('NEON_ADMIN_URL / NEON_WEB_DATABASE_URL ใน .env ไม่หลุดเข้ามา (สคริปต์ sync กับ check เท่านั้นที่ใช้)', () => {
+    const withNeon = [
+      file,
+      'NEON_ADMIN_URL=postgresql://neondb_owner:secret@ep-x.ap-southeast-1.aws.neon.tech/neondb',
+      'NEON_WEB_DATABASE_URL=postgresql://web_reader:pw@ep-x-pooler.ap-southeast-1.aws.neon.tech/neondb',
+    ].join('\n')
+    expect(Object.keys(pickAllowedEnv(withNeon)).some((k) => k.includes('NEON'))).toBe(false)
+    expect(JSON.stringify(pickAllowedEnv(withNeon))).not.toContain('neondb_owner')
+    expect(WEB_ENV_KEYS.some((k) => k.includes('NEON'))).toBe(false)
+  })
+
   it('รายการอนุญาตไม่มีตัวแปรของ role อื่น', () => {
     expect(WEB_ENV_KEYS.some((k) => /ADMIN|AI_|ANTHROPIC|POSTGRES_(USER|PASSWORD)/.test(k))).toBe(false)
   })
@@ -196,6 +207,9 @@ describe('โค้ดใน web/ ต้องไม่แตะข้อมู�
     ['DATABASE_URL ที่ไม่ใช่ WEB_DATABASE_URL', /(?<!WEB_)DATABASE_URL/],
     ['ชื่อ role แอดมิน app_admin', /app_admin/],
     ['โหลด .env ทั้งไฟล์', /loadEnvFile/],
+    // NEON_ADMIN_URL ใช้ในสคริปต์ sync/check ที่รันจากเครื่องนี้เท่านั้น ห้ามเว็บรู้จักมันแม้แต่ชื่อ
+    // (เว็บบน Vercel รับค่าผ่าน WEB_DATABASE_URL ซึ่งผู้ deploy นำค่าจาก NEON_WEB_DATABASE_URL ไปใส่เอง)
+    ['ตัวแปรของ Neon (NEON_*)', /NEON_/],
   ]
 
   it('มีไฟล์ให้ตรวจจริง (ไม่ใช่ผ่านเพราะหาไม่เจอ)', () => {

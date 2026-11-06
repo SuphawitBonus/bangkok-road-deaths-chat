@@ -1,12 +1,13 @@
 // ทดสอบตรรกะฝั่งเบราว์เซอร์ที่เป็นฟังก์ชันล้วน (เลือก resolution, สี, แยกช่องที่ถูกซ่อน)
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import { K_MIN, type H3Cell } from '../web/lib/h3-api.js'
+import { K_MIN, parseH3Request, type H3Cell } from '../web/lib/h3-api.js'
 import {
   ApiError,
   COLOR_RAMP,
   colorFor,
   describeError,
+  fetchH3,
   rankCells,
   resolutionForZoom,
   splitCells,
@@ -157,6 +158,28 @@ describe('describeError', () => {
       const m = describeError(e)
       expect(m).toMatch(/[ก-๙]/)
       expect(m).not.toMatch(/\d{3}|fetch|API|web_reader/i)
+    }
+  })
+})
+
+describe('fetchH3', () => {
+  it('ขอด้วย query string รูปมาตรฐานเสมอ (เซิร์ฟเวอร์ปฏิเสธรูปอื่นด้วย 400)', async () => {
+    const seen: string[] = []
+    vi.stubGlobal('fetch', async (url: string) => {
+      seen.push(url)
+      return new Response(JSON.stringify({ cells: [], summary: { total_deaths: 0 } }), { status: 200 })
+    })
+    try {
+      for (const [res, from, to] of [[8, 2011, 2024], [9, 2020, 2020], [8, 2015, 2018]] as const) {
+        await fetchH3(res, from, to)
+      }
+    } finally {
+      vi.unstubAllGlobals()
+    }
+    expect(seen).toHaveLength(3)
+    for (const url of seen) {
+      expect(url.startsWith('/api/h3?')).toBe(true)
+      expect(parseH3Request(url.slice('/api/h3'.length)).ok).toBe(true)
     }
   })
 })

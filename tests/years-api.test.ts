@@ -57,7 +57,7 @@ describe('buildYearsBody', () => {
 
 describe('handleYears', () => {
   it('200: มีเฉพาะฟิลด์ที่อนุญาต', async () => {
-    const r = await handleYears(new URLSearchParams(), deps(allYears()))
+    const r = await handleYears('', deps(allYears()))
     expect(r.status).toBe(200)
     const body = r.body as YearsBody
     expect(Object.keys(body).sort()).toEqual(['k', 'year_from', 'year_to', 'years'])
@@ -66,24 +66,34 @@ describe('handleYears', () => {
 
   it('400: มีพารามิเตอร์ใด ๆ (กันการเปลี่ยน URL เพื่อหลบ cache) ไม่แตะฐานข้อมูล และไม่สะท้อนค่ากลับ', async () => {
     const d = deps(allYears())
-    const r = await handleYears(new URLSearchParams('year_from=abc<script>'), d)
+    const r = await handleYears('?year_from=abc<script>', d)
     expect(r.status).toBe(400)
     expect(d.queryYears).not.toHaveBeenCalled()
     expect(JSON.stringify(r.body)).not.toContain('script')
     expect(JSON.stringify(r.body)).not.toContain('year_from')
   })
 
+  it.each(['?a=1', '?&', '?=', '?%20', '?cb=123', '?year_from=2011'])(
+    '400: query string ใด ๆ ที่ต่อท้ายมา (%s) — กันการเปลี่ยน URL เพื่อหลบ cache แม้ถอดรหัสแล้วไม่มีพารามิเตอร์',
+    async (qs) => {
+      const d = deps(allYears())
+      const r = await handleYears(qs, d)
+      expect(r.status).toBe(400)
+      expect(d.queryYears).not.toHaveBeenCalled()
+    },
+  )
+
   it('503: ฐานข้อมูลล้ม → ข้อความกลาง ๆ ไม่มีรายละเอียดภายใน', async () => {
     const err = Object.assign(new Error('permission denied for table h3_deaths_monthly (role web_reader)'), { code: '42501' })
     const d = deps(err)
-    const r = await handleYears(new URLSearchParams(), d)
+    const r = await handleYears('', d)
     expect(r.status).toBe(503)
     expect(JSON.stringify(r.body)).not.toMatch(/42501|web_reader|permission|h3_deaths/)
     expect(d.logError).toHaveBeenCalled()
   })
 
   it('503 (ไม่ใช่ 200 กับไทม์ไลน์ศูนย์): ตารางว่าง', async () => {
-    const r = await handleYears(new URLSearchParams(), deps([]))
+    const r = await handleYears('', deps([]))
     expect(r.status).toBe(503)
   })
 })

@@ -112,6 +112,36 @@ export function parseH3Params(params: URLSearchParams): ParseResult {
   return { ok: true, query: { resolution, yearFrom: from, yearTo: to } }
 }
 
+// ── ชุด URL ที่เป็นไปได้ต้องมีจำนวนจำกัด ─────────────────────────────────────
+
+/**
+ * query string รูปเดียวที่ยอมรับสำหรับคำถามหนึ่ง: ครบทั้งสามตัว เรียงตามนี้ ไม่เข้ารหัสอักขระ
+ *
+ * ทำไมเข้มขนาดนี้: ผลของ /api/h3 ถูก cache ที่ CDN โดยใช้ URL ทั้งเส้นเป็นกุญแจ ถ้ายอมให้เขียนคำถามเดียวกันได้หลายแบบ
+ * (สลับลำดับพารามิเตอร์ ตัดค่าเริ่มต้นออก เติม "&" ซ้ำ เข้ารหัส "2011" เป็น "%32%30%31%31") ใครก็สร้าง URL ใหม่
+ * ที่ cache ไม่เคยเห็นได้ไม่จำกัด แต่ละอันทะลุไปถึงฐานข้อมูล ซึ่งบน Neon ฟรีหมายถึงโควตาชั่วโมงประมวลผลที่ถูกเผาได้ด้วย curl วนลูป
+ * ตอนนี้คำถามที่ถูกต้องมีแค่ 2 ความละเอียด × 105 ช่วงปี = 210 URL
+ *
+ * ตรวจสองชั้น: proxy.ts (lib/api-guard.ts) ตรวจ URL ดิบก่อนถึง cache — ชั้นนี้เป็นด่านจริง เพราะ route handler เห็นแต่ query
+ * ที่ Next เขียนใหม่แล้ว (ไม่เห็นความต่างของ %32011 กับ 2011) — ส่วน handleH3 ตรวจซ้ำเป็นชั้นสำรอง
+ */
+export const canonicalQuery = (q: H3Query): string =>
+  `res=${q.resolution}&year_from=${q.yearFrom}&year_to=${q.yearTo}`
+
+/**
+ * ตรวจ query string ดิบของคำขอ (ค่าของ request.nextUrl.search) ทั้งความหมายและรูปแบบ
+ * ข้อความ error ไม่สะท้อนสิ่งที่ผู้ใช้ส่งมา
+ */
+export function parseH3Request(search: string): ParseResult {
+  const raw = search.startsWith('?') ? search.slice(1) : search
+  const parsed = parseH3Params(new URLSearchParams(raw))
+  if (!parsed.ok) return parsed
+  if (raw !== canonicalQuery(parsed.query)) {
+    return bad('the query string must be exactly res=<8|9>&year_from=<yyyy>&year_to=<yyyy>, all three, in that order')
+  }
+  return parsed
+}
+
 // ── ซ่อนช่องที่น้อยเกินไป ────────────────────────────────────────────────
 
 /**
@@ -167,8 +197,9 @@ const UNAVAILABLE: H3ErrorBody = {
   message: 'The map data is temporarily unavailable. Please try again later.',
 }
 
-export async function handleH3(params: URLSearchParams, deps: H3Deps): Promise<H3Result> {
-  const parsed = parseH3Params(params)
+/** @param search query string ดิบของคำขอ (`request.nextUrl.search`) ไม่ใช่ URLSearchParams ที่ถอดรหัสแล้ว */
+export async function handleH3(search: string, deps: H3Deps): Promise<H3Result> {
+  const parsed = parseH3Request(search)
   if (!parsed.ok) {
     return { status: 400, body: { error: 'invalid_parameter', message: parsed.message } }
   }

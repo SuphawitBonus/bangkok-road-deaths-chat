@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   buildH3Body,
+  canonicalQuery,
   handleH3,
+  parseH3Request,
   K_MIN,
   parseH3Params,
   type H3Body,
@@ -15,6 +17,7 @@ import {
 import { DATA_YEAR_MAX_COMPLETE, DATA_YEAR_MIN, toBuddhistYear, toCommonEra } from '../web/lib/years.js'
 
 const q = (s = '') => parseH3Params(new URLSearchParams(s))
+const DEFAULT_QUERY = 'res=8&year_from=2011&year_to=2024'
 const query: H3Query = { resolution: 9, yearFrom: 2011, yearTo: 2024 }
 
 describe('parseH3Params', () => {
@@ -156,7 +159,7 @@ describe('handleH3 — response', () => {
   }
 
   it('200: มีเฉพาะฟิลด์ที่อนุญาต — ไม่มีพิกัด ชื่อ role หรือข้อความ error', async () => {
-    const r = await handleH3(new URLSearchParams('res=9'), ok([
+    const r = await handleH3('res=9&year_from=2011&year_to=2024', ok([
       { h3_index: '89283082803ffff', count: 12 },
       { h3_index: '89283082807ffff', count: 1 },
     ]))
@@ -167,21 +170,21 @@ describe('handleH3 — response', () => {
   })
 
   it('ส่งช่วงปีและความละเอียดที่ใช้จริงกลับไปให้หน้าเว็บ (ค.ศ.)', async () => {
-    const r = await handleH3(new URLSearchParams('res=9&year_from=2015&year_to=2018'), ok([{ h3_index: 'a', count: 5 }]))
+    const r = await handleH3('res=9&year_from=2015&year_to=2018', ok([{ h3_index: 'a', count: 5 }]))
     const body = r.body as H3Body
     expect([body.resolution, body.year_from, body.year_to]).toEqual([9, 2015, 2018])
   })
 
   it('ส่งพารามิเตอร์ที่ตรวจแล้วเข้า query (ไม่ใช่ข้อความดิบ)', async () => {
     const queryRows = vi.fn(async () => [{ h3_index: 'a', count: 5 }])
-    await handleH3(new URLSearchParams('res=9&year_from=2015&year_to=2018'), { queryRows, logError: vi.fn() })
+    await handleH3('res=9&year_from=2015&year_to=2018', { queryRows, logError: vi.fn() })
     expect(queryRows).toHaveBeenCalledWith({ resolution: 9, yearFrom: 2015, yearTo: 2018 })
   })
 
   it('400: year_from=abc ไม่แตะฐานข้อมูล และไม่มีรายละเอียดภายใน', async () => {
     const deps = ok([{ h3_index: 'a', count: 5 }])
     const spy = vi.spyOn(deps, 'queryRows')
-    const r = await handleH3(new URLSearchParams('year_from=abc'), deps)
+    const r = await handleH3('year_from=abc', deps)
     expect(r.status).toBe(400)
     expect(r.body).toMatchObject({ error: 'invalid_parameter' })
     expect(spy).not.toHaveBeenCalled()
@@ -192,7 +195,7 @@ describe('handleH3 — response', () => {
   it('503: ฐานข้อมูลล้ม → ข้อความกลาง ๆ ไม่มีชื่อ role / host / SQLSTATE / ข้อความจากฐานข้อมูล', async () => {
     const logError = vi.fn()
     const err = Object.assign(new Error(SECRET), { code: '28P01' })
-    const r = await handleH3(new URLSearchParams(), { queryRows: async () => { throw err }, logError })
+    const r = await handleH3(DEFAULT_QUERY, { queryRows: async () => { throw err }, logError })
     expect(r.status).toBe(503)
     const text = JSON.stringify(r.body)
     for (const leak of ['web_reader', '10.1.2.3', '5435', 'roaddeaths', '28P01', 'password', 'authentication']) {
@@ -205,13 +208,13 @@ describe('handleH3 — response', () => {
 
   it('503 (ไม่ใช่ 200 ว่าง): ตารางยังไม่มี (42P01)', async () => {
     const err = Object.assign(new Error('relation "app.h3_deaths_monthly" does not exist'), { code: '42P01' })
-    const r = await handleH3(new URLSearchParams(), { queryRows: async () => { throw err }, logError: vi.fn() })
+    const r = await handleH3(DEFAULT_QUERY, { queryRows: async () => { throw err }, logError: vi.fn() })
     expect(r.status).toBe(503)
     expect(JSON.stringify(r.body)).not.toContain('h3_deaths_monthly')
   })
 
   it('503: ไม่มีสิทธิ์หรือไม่มีรหัสผ่านของ web_reader (fail closed ก็ตอบ 503 ไม่หลุดรายละเอียด)', async () => {
-    const r = await handleH3(new URLSearchParams(), {
+    const r = await handleH3(DEFAULT_QUERY, {
       queryRows: async () => { throw new Error('WEB_DB_PASSWORD (or WEB_DATABASE_URL) is not set') },
       logError: vi.fn(),
     })
@@ -220,13 +223,93 @@ describe('handleH3 — response', () => {
   })
 
   it('503 (ไม่ใช่ 200 ว่าง): ช่วงปีที่ถูกต้องแต่ผลว่าง = ตารางยังไม่ได้โหลด', async () => {
-    const r = await handleH3(new URLSearchParams(), ok([]))
+    const r = await handleH3(DEFAULT_QUERY, ok([]))
     expect(r.status).toBe(503)
   })
 
   it('503: ข้อมูลในตารางผิดปกติ (count = 0)', async () => {
-    const r = await handleH3(new URLSearchParams(), ok([{ h3_index: 'a', count: 0 }]))
+    const r = await handleH3(DEFAULT_QUERY, ok([{ h3_index: 'a', count: 0 }]))
     expect(r.status).toBe(503)
+  })
+})
+
+describe('ชุด URL ที่ยอมรับต้องจำกัด (ปิดช่องหลบ cache ของ CDN → ไม่ยิงฐานข้อมูล Neon ฟรีจนเกินโควตา)', () => {
+  const years = Array.from({ length: DATA_YEAR_MAX_COMPLETE - DATA_YEAR_MIN + 1 }, (_, i) => DATA_YEAR_MIN + i)
+
+  it('มี URL ที่ถูกต้องแค่ 2 ความละเอียด × 105 ช่วงปี = 210 เส้น และแต่ละเส้นมีรูปเดียว', () => {
+    const accepted: string[] = []
+    for (const res of [8, 9] as const) {
+      for (const from of years) {
+        for (const to of years) {
+          const qs = canonicalQuery({ resolution: res, yearFrom: from, yearTo: to })
+          const r = parseH3Request(qs)
+          if (from > to) expect(r.ok).toBe(false)
+          else {
+            expect(r).toEqual({ ok: true, query: { resolution: res, yearFrom: from, yearTo: to } })
+            accepted.push(qs)
+          }
+        }
+      }
+    }
+    expect(accepted).toHaveLength(210)
+    expect(new Set(accepted).size).toBe(210)
+  })
+
+  it('ยอมรับเมื่อมี "?" นำหน้า (รูปที่ request.nextUrl.search ให้มา) เท่านั้น', () => {
+    expect(parseH3Request('?res=8&year_from=2011&year_to=2024').ok).toBe(true)
+    expect(parseH3Request('res=8&year_from=2011&year_to=2024').ok).toBe(true)
+  })
+
+  // คำถามเดียวกัน (res8 ทุกปี) เขียนได้หลายแบบ — ทุกแบบที่ไม่ใช่รูปมาตรฐานต้องถูกปฏิเสธ
+  it.each([
+    ['ไม่ใส่อะไรเลย', ''],
+    ['ตัดค่าเริ่มต้นออก (res)', 'year_from=2011&year_to=2024'],
+    ['ตัดค่าเริ่มต้นออก (ปี)', 'res=8'],
+    ['สลับลำดับ', 'year_from=2011&year_to=2024&res=8'],
+    ['สลับลำดับอีกแบบ', 'year_to=2024&year_from=2011&res=8'],
+    ['เติม & ท้ายสุด', 'res=8&year_from=2011&year_to=2024&'],
+    ['เติม & นำหน้า', '&res=8&year_from=2011&year_to=2024'],
+    ['& ซ้อนกลางสาย', 'res=8&&year_from=2011&year_to=2024'],
+    ['เข้ารหัส 2011 เป็น %32%30%31%31', 'res=8&year_from=%32%30%31%31&year_to=2024'],
+    ['เข้ารหัสชื่อพารามิเตอร์', 'r%65s=8&year_from=2011&year_to=2024'],
+    ['เข้ารหัสด้วยตัวพิมพ์เล็ก/ใหญ่ต่างกัน', 'res=8&year_from=%32011&year_to=2024'],
+    ['ใช้ ; คั่น', 'res=8;year_from=2011;year_to=2024'],
+    ['เติม # ท้าย', 'res=8&year_from=2011&year_to=2024#x'],
+    ['พารามิเตอร์แปลกปลอม', 'res=8&year_from=2011&year_to=2024&_=1'],
+    ['พารามิเตอร์แปลกปลอมกับ cache buster', 'res=8&year_from=2011&year_to=2024&cb=123456'],
+    ['ซ้ำ', 'res=8&res=8&year_from=2011&year_to=2024'],
+    ['0 นำหน้า', 'res=08&year_from=2011&year_to=2024'],
+    ['เว้นวรรค (+) ในค่า', 'res=8&year_from=2011&year_to=2024+'],
+  ])('ไม่ยอมรับ: %s', (_label, qs) => {
+    expect(parseH3Request(qs).ok).toBe(false)
+    expect(parseH3Request('?' + qs).ok).toBe(false)
+  })
+
+  it('400 และไม่แตะฐานข้อมูล สำหรับรูปที่ไม่ใช่รูปมาตรฐาน (ทุกคำขอแบบนี้ไม่ถึง Neon)', async () => {
+    const queryRows = vi.fn(async () => [{ h3_index: 'a', count: 5 }])
+    for (const qs of ['', '?res=8', '?year_to=2024&year_from=2011&res=8', '?res=8&year_from=2011&year_to=2024&cb=1']) {
+      const r = await handleH3(qs, { queryRows, logError: vi.fn() })
+      expect(r.status).toBe(400)
+      expect(r.body).toMatchObject({ error: 'invalid_parameter' })
+    }
+    expect(queryRows).not.toHaveBeenCalled()
+  })
+
+  it('ข้อความ 400 ไม่สะท้อนสิ่งที่ผู้ใช้ส่งมา', async () => {
+    const r = await handleH3('?res=8&year_from=2011&year_to=2024&cb=<script>alert(1)</script>', {
+      queryRows: async () => [],
+      logError: vi.fn(),
+    })
+    expect(r.status).toBe(400)
+    expect(JSON.stringify(r.body)).not.toMatch(/script|alert|cb=/)
+  })
+
+  it('คำตอบ 400 และ 503 ห้าม cache (ที่ route.ts ตั้ง no-store) — ตรวจจากไฟล์ route', async () => {
+    const { readFileSync } = await import('node:fs')
+    const src = readFileSync(new URL('../web/app/api/h3/route.ts', import.meta.url), 'utf8')
+    expect(src).toMatch(/result\.status === 200[\s\S]*public, max-age=300, s-maxage=3600[\s\S]*'no-store'/)
+    expect(src).toContain('request.nextUrl.search')
+    expect(src).not.toContain('searchParams')
   })
 })
 

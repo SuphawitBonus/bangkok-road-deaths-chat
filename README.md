@@ -7,17 +7,42 @@
 ฐานข้อมูลมาจากชุดข้อมูลเปิดของกรมควบคุมโรคผ่าน [data.go.th](https://data.go.th/dataset/rtddi)
 จำนวน 12,146 ราย ตั้งแต่ พ.ศ. 2554–2569
 
-> **สถานะ: สัปดาห์ที่ 1 จาก 4** — ตอนนี้มีเฉพาะชั้นข้อมูล ความปลอดภัยของการรัน SQL และโครงชุดทดสอบ
-> ยังไม่มีส่วน AI และหน้าเว็บ
+> **สถานะ (2026-11-06):** มีชั้นข้อมูล + ชั้นความปลอดภัยของ SQL + `ask()` กับตัววัดผล (ยังไม่เคยรันวัดผลจริง) + **แผนที่ 3 มิติที่พร้อม deploy**
+> (Neon ตั้งค่าและตรวจแล้ว ยังไม่ได้ขึ้น Vercel) ยังไม่มีหน้าแชตถาม–ตอบ
+
+## Live demo
+
+**URL: _(ยังไม่ได้ deploy — ใส่ลิงก์ที่นี่หลังขึ้น Vercel)_**
+
+แผนที่ 3 มิติของผู้เสียชีวิตจากอุบัติเหตุทางถนนในกรุงเทพฯ ย้อนดู 14 ปี ข้อมูลที่ขึ้น production มีแค่ตารางสรุปต่อช่อง H3 ต่อเดือน
+**ข้อมูลรายคนอยู่ในเครื่องของผู้พัฒนาเท่านั้น** ไม่เคยขึ้น Neon หรือ Vercel:
+
+```
+  เครื่องผู้พัฒนา                                         production
+ ┌────────────────────────────────────┐                ┌──────────────────────────┐
+ │ data.go.th CSV                     │                │ Neon Postgres (sin)      │
+ │   → app.deaths_raw  ← ข้อมูลรายคน   │                │   app.h3_deaths_monthly  │
+ │   → view app.deaths ← ข้อมูลรายคน   │  npm run       │   (สรุปต่อช่อง ต่อเดือน)    │
+ │   → app.h3_deaths_monthly ─────────┼─ neon:sync ───▶│   role web_reader เท่านั้น │
+ │ role ai_reader (ask), app_admin    │                └────────────┬─────────────┘
+ └────────────────────────────────────┘                             │ WEB_DATABASE_URL
+                                                        ┌───────────▼─────────────┐
+                                                        │ Vercel (sin1) Next.js   │
+                                                        └─────────────────────────┘
+```
+
+ขั้นตอน deploy และเหตุผลอยู่ใน [docs/deploy.md](docs/deploy.md)
 
 ## แผน 4 สัปดาห์
 
-| สัปดาห์ | ขอบเขต | สถานะ |
-| --- | --- | --- |
-| 1 | ข้อมูลเข้า Postgres, ชั้นความปลอดภัยของ SQL, โครง eval | ✅ เสร็จ |
-| 2 | ต่อ LLM เขียน SQL จากคำถาม + วัดผลด้วย eval 50 ข้อ | ⬜ |
-| 3 | หน้าเว็บ Next.js แสดงคำตอบ กราฟ และ SQL ที่ใช้ | ⬜ |
-| 4 | deploy (Neon + Vercel), ขัดเกลา, เขียนเอกสาร | ⬜ |
+| งาน | สถานะจริง |
+| --- | --- |
+| สัปดาห์ 1: ข้อมูลเข้า Postgres, ชั้นความปลอดภัยของ SQL, โครง eval 50 ข้อ | ✅ เสร็จ |
+| สัปดาห์ 2: `ask()` ต่อ Claude เขียน SQL + ตัวรัน eval (`npm run evals:run`) | 🟨 **โค้ดและ test เสร็จ แต่ยังไม่เคยรันวัดผลกับ API จริง** (ยังไม่มีเครดิต) ผล baseline ใน `docs/evals-log.md` ยังว่าง |
+| แผนที่ 3 มิติ (`web/`): H3 + ตึก 3 มิติ + ไทม์ไลน์ + ซ่อนช่อง <3 ราย | ✅ เสร็จ ใช้งานในเครื่องได้ ([docs/privacy.md](docs/privacy.md)) |
+| เตรียม deploy: Neon + role `web_reader` + sync + ตรวจ | ✅ ทำและตรวจกับ Neon จริงแล้ว (`neon:sync`, `neon:check`) |
+| deploy ขึ้น Vercel | ⬜ ยังไม่ได้ทำ ดู [docs/deploy.md](docs/deploy.md) ข้อ 3 |
+| หน้าเว็บถาม–ตอบ (แชต + กราฟ + แสดง SQL) | ⬜ ยังไม่เริ่ม (ต้องรอผลวัด `ask()` ก่อน) |
 
 ## เริ่มใช้งาน
 
@@ -28,7 +53,7 @@ npm install
 cp .env.example .env        # แล้วเปิดไฟล์ไปตั้งรหัสผ่านทั้งสองตัว
 npm run db:up               # ยก Postgres ขึ้นใน Docker
 npm run db:setup            # สร้าง schema + role แล้วโหลดข้อมูล (รันซ้ำได้)
-npm test                    # ชุดทดสอบตัวตรวจ SQL (74 ข้อ ไม่ต้องใช้ฐานข้อมูล)
+npm test                    # ชุดทดสอบ (325 ข้อ ไม่ต้องใช้ฐานข้อมูล)
 npm run db:check            # ยิงคำสั่งอันตรายด้วย role ของ AI เพื่อพิสูจน์ชั้นฐานข้อมูล
 npm run evals:verify        # ตรวจว่าเฉลยในชุดคำถามตรงกับฐานข้อมูลจริง
 npm run docs:schema         # สร้าง docs/data-dictionary.md จาก COMMENT ON ในฐานข้อมูล
@@ -43,12 +68,12 @@ npm run docs:schema         # สร้าง docs/data-dictionary.md จาก 
 | --- | --- |
 | `db/` | ไฟล์ SQL ของ schema, view `deaths` พร้อม `COMMENT ON` และ role สำหรับ AI |
 | `src/sql-guard.ts` | ตัวตรวจ SQL ที่ AI เขียน ก่อนส่งเข้า DB |
-| `src/scripts/` | สคริปต์ migrate, load ข้อมูล, ตรวจเฉลยของ eval |
+| `src/scripts/` | สคริปต์ migrate, load ข้อมูล, ตรวจเฉลยของ eval, `neon:sync` / `neon:check` |
 | `data/` | ฝั่งข้อมูลที่เป็น Python — สคริปต์ดึงข้อมูลจาก data.go.th และไฟล์ CSV ดิบ |
 | `evals/` | ชุดคำถามทดสอบพร้อมเฉลย (`questions.jsonl`) |
 | `web/` | หน้าเว็บ Next.js: แผนที่ 3 มิติ (MapLibre + deck.gl) ดู [web/README.md](web/README.md) |
 | `tests/` | ชุดทดสอบ (vitest) |
-| `docs/` | [ความปลอดภัย](docs/security.md) · [ความเป็นส่วนตัวของหน้าแผนที่](docs/privacy.md) · [การตัดสินใจฝั่งเว็บ](docs/decisions-web.md) · [พจนานุกรมข้อมูล](docs/data-dictionary.md) · [ชุดทดสอบ](docs/evals.md) |
+| `docs/` | [ความปลอดภัย](docs/security.md) · [ความเป็นส่วนตัวของหน้าแผนที่](docs/privacy.md) · [deploy (Vercel + Neon)](docs/deploy.md) · [การตัดสินใจฝั่งเว็บ](docs/decisions-web.md) · [พจนานุกรมข้อมูล](docs/data-dictionary.md) · [ชุดทดสอบ](docs/evals.md) |
 
 ## หน้าเว็บ: กรุงเทพฯ 3 มิติ
 
@@ -61,6 +86,8 @@ npm run db:setup     # สร้าง role web_reader + ตารางสร�
 npm run db:check     # ตรวจสิทธิ์ของทุก role (web_reader เป็นข้อบังคับ ไม่มีก็ล้ม)
 npm run web:dev      # http://localhost:3010
 ```
+
+`web/` เป็นโปรเจกต์อิสระ (lockfile ของตัวเอง) ติดตั้งในโฟลเดอร์นั้นเอง: `cd web && npm install` ส่วนขั้นตอนขึ้น production อยู่ใน [docs/deploy.md](docs/deploy.md)
 
 ## หลักการที่ยึดไว้
 

@@ -6,7 +6,7 @@ import { queryYearRows } from '@/lib/h3-queries'
 import { handleYears } from '@/lib/years-api'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const result = await handleYears(request.nextUrl.searchParams, {
+  const result = await handleYears(request.nextUrl.search, {
     queryYears: queryYearRows,
     logError: (context, err) => console.error(`[api/years] ${context}`, err),
   })
